@@ -24,25 +24,61 @@ export default function Quiz({
 
     answerStateRef.current = answers
 
+    // const getNextQuestion = async () => {
+    //     let updateData
+    //     console.log({questionCount, question})
+    //     if (questionCount == question.order + 1) {
+    //         updateData = {phase: 'result'}
+    //     } else {
+    //         updateData = {
+    //             current_question_sequence: question.order + 1,
+    //             is_answer_revealed: false,
+    //         }
+    //     }
+    //
+    //     const {data, error} = await supabase
+    //         .from('games')
+    //         .update(updateData)
+    //         .eq('id', gameId)
+    //     if (error) {
+    //         return alert(error.message)
+    //     }
+    // }
+
     const getNextQuestion = async () => {
-        let updateData
-        if (questionCount == question.order + 1) {
-            updateData = {phase: 'result'}
-        } else {
-            updateData = {
-                current_question_sequence: question.order + 1,
-                is_answer_revealed: false,
-            }
+        // Fetch the latest game state to get the most recent question order
+        const {data: gameData, error: gameError} = await supabase
+            .from('games')
+            .select('current_question_sequence')
+            .eq('id', gameId)
+            .single();
+
+        if (gameError || !gameData) {
+            return alert(gameError?.message || "Error fetching game data");
         }
 
-        const {data, error} = await supabase
+        let updateData;
+        console.log({questionCount, question, currentSequence: gameData.current_question_sequence});
+
+        if (questionCount == gameData.current_question_sequence + 1) {
+            updateData = {phase: 'result'};
+        } else {
+            updateData = {
+                current_question_sequence: gameData.current_question_sequence + 1,
+                is_answer_revealed: false,
+            };
+        }
+
+        const {error} = await supabase
             .from('games')
             .update(updateData)
-            .eq('id', gameId)
+            .eq('id', gameId);
+
         if (error) {
-            return alert(error.message)
+            return alert(error.message);
         }
-    }
+    };
+
 
     const onTimeUp = useCallback(async () => {
         setIsAnswerRevealed(true)
@@ -248,7 +284,7 @@ export default function Quiz({
 
             <div className="flex text-white py-2 px-4 items-center bg-black">
                 <div className="text-2xl">
-                    {question.order + 1}/{questionCount}
+                    {question.order}/{questionCount}
                 </div>
             </div>
         </div>
